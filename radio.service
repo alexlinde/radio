@@ -1,0 +1,16 @@
+[Unit]
+Description=Radio
+After=network.target
+
+[Service]
+User=pi
+Group=pi
+WorkingDirectory=/home/pi/radio/
+ExecStart=/usr/bin/python3 -u radio.py
+# StandardOutput=inherit
+# StandardError=inherit
+# Restart=always
+
+[Install]
+WantedBy=multi-user.target
+
