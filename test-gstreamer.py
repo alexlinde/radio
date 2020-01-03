@@ -20,7 +20,7 @@ pipe = None
 Gst.init(None)
 
 def decode_src_created(element, new_pad, data):
-    debug("Received new pad '{0}' from '{1}'".format(new_pad.get_name(), src.get_name()))
+    debug("Received new pad '{0}' from '{1}'".format(new_pad.get_name(), element.get_name()))
 
     if new_pad.is_linked():
         debug("  We are already linked. Ignoring.")

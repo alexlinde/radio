@@ -20,11 +20,10 @@ import time
 
 from queue import Queue
 
-from omxplayer.player import OMXPlayer
-
 from volume import Volume
 from switches import RotaryEncoder, RotarySwitch
 from display import Display
+from player import Player
 
 from RPi import GPIO
 
@@ -91,55 +90,13 @@ class Power:
 
   def destroy(self):
     self._pwm.stop()
-
-class Player:
-  """
-  A wrapper API for interacting with the media player on the RPi.
-  """
-  
-  def __init__(self,streams,display,initialStream=0):
-    self._streams = streams
-    self._display = display
-    self._streamIndex = initialStream
-    self._player = None
-
-  @property
-  def playing(self):
-    return self._player is not None
-
-  def play(self):
-    self._display.scrollText(self._streams[self._streamIndex][0])
-    self._display.priorityText("R{}".format(self._streamIndex+1))
-    if self._player is None:
-      self._player = OMXPlayer(self._streams[self._streamIndex][1],args="-o alsa --no-keys --no-osd -b")
-    else:
-      self._player.load(self._streams[self._streamIndex][1])
-    self._display.start()
-    return self._streams[self._streamIndex][1]
-
-  def destroy(self):
-    if self._player is not None:
-      self._player.quit()
-    self._display.destroy()
-
-  def stop(self):
-    if self._player is not None:
-      self._player.stop()
-      self._player = None
-    self._display.stop()
-
-  def next(self):
-    self._streamIndex = (self._streamIndex + 1) % len(self._streams)
-    return self.play()
-
-  def prev(self):
-    self._streamIndex = (self._streamIndex - 1) % len(self._streams)
-    return self.play()
     
 if __name__ == "__main__":
   v = Volume(VOLUME_CONTROL,VOLUME_MIN,VOLUME_MAX)
-  p = Player(STREAMS,Display())
+  d = Display()
+  p = Player()
   l = Power(POWER_GPIO)
+  currentStream = 0
   
   def on_volume_press(value):
     v.toggle()
@@ -174,11 +131,11 @@ if __name__ == "__main__":
     debug("Set mode to: {}".format(mode))
     if mode == 0:
       # radio off
-      p.stop()
+      stop()
     else:
       # for mode 1 radio on, ignore mode 2
       if not p.playing:
-        p.play()
+        play()
 
   def handle_volume(delta):
     if v.is_muted:
@@ -188,22 +145,44 @@ if __name__ == "__main__":
       vol = v.up()
     else:
       vol = v.down()
-    p._display.priorityText(int(v.scaled_volume(vol)))
+    d.priorityText(int(v.scaled_volume(vol)))
     debug("Set volume to: {}".format(vol))
 
   def handle_tune(delta):
     if delta == 1:
-      stream = p.next()
+      p.next()
     else:
-      stream = p.prev()
-    debug("Set stream to: {}".format(stream))
-    
+      p.prev()
+  
+  def play():
+    debug("Set stream to: {}".format(STREAMS[currentStream][1]))
+    d.scrollText(STREAMS[currentStream][0])
+    d.priorityText("R{}".format(currentStream+1))
+    p.destroy_pipeline()
+    if p.create_pipeline(STREAMS[currentStream][1], True) is True:
+      d.start()
+    else:
+      debug("failed to start streaming pipeline")
+
+  def stop():
+    p.destroy_pipeline()
+    d.stop()
+
+  def next():
+    currentStream = (currentStream + 1) % len(STREAMS)
+    play()
+
+  def prev():
+    currentStream = (currentStream - 1) % len(STREAMS)
+    play()    
+
   def on_exit(a, b):
     print("Exiting...")
+    stop()
     volume.destroy()
     tune.destroy()
     mode.destroy()
-    p.destroy()
+    d.destroy()
     l.destroy()
     GPIO.cleanup()
     EVENT.set()
