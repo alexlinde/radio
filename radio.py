@@ -12,11 +12,9 @@ The display is 8x8 matrix connected via I2C.
 
 import os
 import signal
-import subprocess
 import sys
 import threading
-import math
-import time
+import logging
 
 from queue import Queue
 
@@ -26,8 +24,6 @@ from display import Display
 from player import Player
 
 from RPi import GPIO
-
-DEBUG = True
 
 # SETTINGS
 # ========
@@ -56,11 +52,14 @@ VOLUME_MAX = 96
 POWER_GPIO = 16
 
 # The streams we can tune between
+# MPEG-DASH for BBC, low (48-96k) bitrate can be used globally
 STREAMS = [
-  ("BBC Radio 1", "http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio1_mf_p"),
-  ("BBC Radio 2", "http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio2_mf_p"),
-  ("BBC Radio 3", "http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio3_mf_p"),
-  ("BBC Radio 4", "http://bbcmedia.ic.llnwd.net/stream/bbcmedia_radio4fm_mf_p")
+  ("BBC Radio 1", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_one.mpd"),
+  ("BBC Radio 2", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_two.mpd"),
+  ("BBC Radio 3", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_three.mpd"),
+  ("BBC Radio 4", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_fourfm.mpd"),
+  ("BBC 6 Music", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_6music.mpd"),
+  ("BBC World Service", "http://open.live.bbc.co.uk/mediaselector/5/select/mediaset/http-icy-mp3-a/format/pls/proto/http/vpid/bbc_world_service.pls")
 ]
 
 # (END SETTINGS)
@@ -74,11 +73,6 @@ QUEUE = Queue()
 # main thread that there's something in there. Then the main thread will
 # process the queue and reset the event. 
 EVENT = threading.Event()
-
-def debug(str):
-  if not DEBUG:
-    return
-  print(str)
 
 class Power:
   def __init__(self, gpio):
@@ -100,7 +94,7 @@ if __name__ == "__main__":
   
   def on_volume_press(value):
     v.toggle()
-    debug("Toggled mute to: {}".format(v.is_muted))
+    logging.debug("Toggled mute to: {}".format(v.is_muted))
     EVENT.set()
   
   def on_volume_turn(delta):
@@ -128,7 +122,7 @@ if __name__ == "__main__":
         handle_volume(msg[1])
   
   def handle_mode(mode):
-    debug("Set mode to: {}".format(mode))
+    logging.debug("Set mode to: {}".format(mode))
     if mode == 0:
       # radio off
       stop()
@@ -139,14 +133,14 @@ if __name__ == "__main__":
 
   def handle_volume(delta):
     if v.is_muted:
-      debug("Unmuting")
+      logging.debug("Unmuting")
       v.toggle()
     if delta == 1:
       vol = v.up()
     else:
       vol = v.down()
     d.priorityText(int(v.scaled_volume(vol)))
-    debug("Set volume to: {}".format(vol))
+    logging.debug("Set volume to: {}".format(vol))
 
   def handle_tune(delta):
     if delta == 1:
@@ -155,14 +149,14 @@ if __name__ == "__main__":
       p.prev()
   
   def play():
-    debug("Set stream to: {}".format(STREAMS[currentStream][1]))
+    logging.debug("Set stream to: {}".format(STREAMS[currentStream][1]))
     d.scrollText(STREAMS[currentStream][0])
     d.priorityText("R{}".format(currentStream+1))
     p.destroy_pipeline()
     if p.create_pipeline(STREAMS[currentStream][1], True) is True:
       d.start()
     else:
-      debug("failed to start streaming pipeline")
+      logging.warning("failed to start streaming pipeline")
 
   def stop():
     p.destroy_pipeline()
@@ -177,7 +171,7 @@ if __name__ == "__main__":
     play()    
 
   def on_exit(a, b):
-    print("Exiting...")
+    logging.debug("Exiting...")
     stop()
     volume.destroy()
     tune.destroy()
@@ -188,18 +182,18 @@ if __name__ == "__main__":
     EVENT.set()
     sys.exit()
 
-  debug("Volume knob using pins {} and {}".format(VOLUME_GPIO_A, VOLUME_GPIO_B))
-  debug("Volume button using pin {}".format(VOLUME_GPIO_BUTTON))
-  debug("Initial volume: {}".format(v.volume))
+  logging.debug("Volume knob using pins {} and {}".format(VOLUME_GPIO_A, VOLUME_GPIO_B))
+  logging.debug("Volume button using pin {}".format(VOLUME_GPIO_BUTTON))
+  logging.debug("Initial volume: {}".format(v.volume))
   volume = RotaryEncoder(VOLUME_GPIO_A, VOLUME_GPIO_B, callback=on_volume_turn, 
     buttonPin=VOLUME_GPIO_BUTTON, buttonCallback=on_volume_press)
 
-  debug("Tuning knob using pins {} and {}".format(TUNE_GPIO_A, TUNE_GPIO_B))
+  logging.debug("Tuning knob using pins {} and {}".format(TUNE_GPIO_A, TUNE_GPIO_B))
   tune = RotaryEncoder(TUNE_GPIO_A, TUNE_GPIO_B, callback=on_tune)
 
-  debug("Mode knob using pins {}, {} and {}".format(MODE_GPIO_1, MODE_GPIO_2, MODE_GPIO_3))
+  logging.debug("Mode knob using pins {}, {} and {}".format(MODE_GPIO_1, MODE_GPIO_2, MODE_GPIO_3))
   mode = RotarySwitch([MODE_GPIO_1, MODE_GPIO_2, MODE_GPIO_3], callback=on_mode)
-  debug("Initial mode: {}".format(mode.pole))
+  logging.debug("Initial mode: {}".format(mode.pole))
   handle_mode(mode.pole)
 
   signal.signal(signal.SIGTERM, on_exit)
