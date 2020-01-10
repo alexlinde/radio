@@ -1,15 +1,14 @@
 [Unit]
-Description=Radio
-After=network.target
+Description=BBC Radio Streaming Player
+Requires=network.target
 
 [Service]
+Type=simple
 User=pi
 Group=pi
 WorkingDirectory=/home/pi/radio/
 ExecStart=/usr/bin/python3 -u radio.py
-# StandardOutput=inherit
-# StandardError=inherit
-# Restart=always
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
