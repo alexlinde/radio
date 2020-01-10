@@ -1,11 +1,5 @@
 import subprocess
-
-DEBUG = False
-
-def debug(str):
-  if not DEBUG:
-    return
-  print(str)
+import logging
 
 class VolumeError(Exception):
   pass
@@ -87,10 +81,8 @@ class Volume:
       output = self.amixer("get '{}'".format(self._control))
       
     lines = output.readlines()
-    if DEBUG:
-      strings = [line.decode('utf8') for line in lines]
-      debug("OUTPUT:")
-      debug("".join(strings))
+    strings = [line.decode('utf8') for line in lines]
+    logging.debug("".join(strings))
     last = lines[-1].decode('utf-8')
     
     # The last line of output will have two values in square brackets. The
@@ -120,6 +112,7 @@ class Volume:
     p = subprocess.Popen("amixer {}".format(cmd), shell=True, stdout=subprocess.PIPE)
     code = p.wait()
     if code != 0:
+      # todo: better log/handle the error
       raise VolumeError("Unknown error")
     
     return p.stdout
