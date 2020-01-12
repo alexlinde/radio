@@ -74,6 +74,8 @@ QUEUE = Queue()
 # process the queue and reset the event. 
 EVENT = threading.Event()
 
+currentStream = 0
+
 class Power:
   def __init__(self, gpio):
     self._gpio = gpio
@@ -85,102 +87,96 @@ class Power:
   def destroy(self):
     self._pwm.stop()
     
+
+def on_volume_press(value):
+  v.toggle()
+  logging.debug("Toggled mute to: {}".format(v.is_muted))
+  EVENT.set()
+
+def on_volume_turn(delta):
+  if (mode.pole > 0):
+    QUEUE.put(('V',delta))
+    EVENT.set()
+
+def on_tune(delta):
+  if (mode.pole > 0):
+    QUEUE.put(('T',delta))
+    EVENT.set()
+
+def on_mode(mode):
+  QUEUE.put(('M',mode))
+  EVENT.set()
+
+def consume_queue():
+  while not QUEUE.empty():
+    msg = QUEUE.get()
+    if msg[0] == 'T':
+      handle_tune(msg[1])
+    elif msg[0] == 'M':
+      handle_mode(msg[1])
+    elif msg[0] == 'V':
+      handle_volume(msg[1])
+
+def handle_mode(mode):
+  logging.debug("Set mode to: {}".format(mode))
+  if mode == 0:
+    # radio off
+    stop()
+  else:
+    # for mode 1 radio on, ignore mode 2
+    if not p.playing:
+      play()
+
+def handle_volume(delta):
+  if v.is_muted:
+    logging.debug("Unmuting")
+    v.toggle()
+  if delta == 1:
+    vol = v.up()
+  else:
+    vol = v.down()
+  d.priorityText(int(v.scaled_volume(vol)))
+  logging.debug("Set volume to: {}".format(vol))
+
+def handle_tune(delta):
+  global currentStream
+  if delta == 1:
+    currentStream = (currentStream + 1) % len(STREAMS)
+  else:
+    currentStream = (currentStream - 1) % len(STREAMS)
+  play()    
+
+def play():
+  logging.debug("Set stream to: {}".format(STREAMS[currentStream][1]))
+  d.scrollText(STREAMS[currentStream][0])
+  d.priorityText("R{}".format(currentStream+1))
+  p.destroy_pipeline()
+  if p.create_pipeline(STREAMS[currentStream][1], True) is True:
+    d.start()
+  else:
+    logging.warning("failed to start streaming pipeline")
+
+def stop():
+  p.destroy_pipeline()
+  d.stop()
+
+def on_exit(a, b):
+  logging.debug("Exiting...")
+  stop()
+  volume.destroy()
+  tune.destroy()
+  mode.destroy()
+  d.destroy()
+  l.destroy()
+  GPIO.cleanup()
+  EVENT.set()
+  sys.exit()
+
 if __name__ == "__main__":
   v = Volume(VOLUME_CONTROL,VOLUME_MIN,VOLUME_MAX)
   d = Display()
   p = Player()
   l = Power(POWER_GPIO)
-  currentStream = 0
-  
-  def on_volume_press(value):
-    v.toggle()
-    logging.debug("Toggled mute to: {}".format(v.is_muted))
-    EVENT.set()
-  
-  def on_volume_turn(delta):
-    if (mode.pole > 0):
-      QUEUE.put(('V',delta))
-      EVENT.set()
-
-  def on_tune(delta):
-    if (mode.pole > 0):
-      QUEUE.put(('T',delta))
-      EVENT.set()
-
-  def on_mode(mode):
-    QUEUE.put(('M',mode))
-    EVENT.set()
-
-  def consume_queue():
-    while not QUEUE.empty():
-      msg = QUEUE.get()
-      if msg[0] == 'T':
-        handle_tune(msg[1])
-      elif msg[0] == 'M':
-        handle_mode(msg[1])
-      elif msg[0] == 'V':
-        handle_volume(msg[1])
-  
-  def handle_mode(mode):
-    logging.debug("Set mode to: {}".format(mode))
-    if mode == 0:
-      # radio off
-      stop()
-    else:
-      # for mode 1 radio on, ignore mode 2
-      if not p.playing:
-        play()
-
-  def handle_volume(delta):
-    if v.is_muted:
-      logging.debug("Unmuting")
-      v.toggle()
-    if delta == 1:
-      vol = v.up()
-    else:
-      vol = v.down()
-    d.priorityText(int(v.scaled_volume(vol)))
-    logging.debug("Set volume to: {}".format(vol))
-
-  def handle_tune(delta):
-    if delta == 1:
-      p.next()
-    else:
-      p.prev()
-  
-  def play():
-    logging.debug("Set stream to: {}".format(STREAMS[currentStream][1]))
-    d.scrollText(STREAMS[currentStream][0])
-    d.priorityText("R{}".format(currentStream+1))
-    p.destroy_pipeline()
-    if p.create_pipeline(STREAMS[currentStream][1], True) is True:
-      d.start()
-    else:
-      logging.warning("failed to start streaming pipeline")
-
-  def stop():
-    p.destroy_pipeline()
-    d.stop()
-
-  def next():
-    currentStream = (currentStream + 1) % len(STREAMS)
-    play()
-
-  def prev():
-    currentStream = (currentStream - 1) % len(STREAMS)
-    play()    
-
-  def on_exit(a, b):
-    logging.debug("Exiting...")
-    stop()
-    volume.destroy()
-    tune.destroy()
-    mode.destroy()
-    d.destroy()
-    l.destroy()
-    GPIO.cleanup()
-    EVENT.set()
-    sys.exit()
 
   logging.debug("Volume knob using pins {} and {}".format(VOLUME_GPIO_A, VOLUME_GPIO_B))
   logging.debug("Volume button using pin {}".format(VOLUME_GPIO_BUTTON))
