@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
 """
-The daemon responsible for handling the channel selection of the radio.
+Raspberry PI radio retrofit
 
 The tuning knob is a rotary encoder and is used to select the stream. The mode knob is a
-rotary switch with three positions, we'll just use it for off/on for now.
+rotary switch with three positions, we'll just use it for off/on for now - in the future
+will be to time shift. Volume knob is also a rotary encoder, with push switch for mute.
 
-The display is 8x8 matrix connected via I2C.
+The display is 8x8 matrix connected via I2C. Power indicator is a simple red LED.
+
+Audio output is via HifiBerry AMP2, integrated via PCM and driven by alsa. 
 
 """
 
@@ -58,6 +61,7 @@ STREAMS = [
   ("BBC Radio 2", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_two.mpd"),
   ("BBC Radio 3", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_three.mpd"),
   ("BBC Radio 4", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_fourfm.mpd"),
+  ("BBC Radio 5 Live", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_radio_five_live.mpd"),
   ("BBC 6 Music", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/llnw/bbc_6music.mpd"),
   ("BBC World Service", "http://open.live.bbc.co.uk/mediaselector/5/select/mediaset/http-icy-mp3-a/format/pls/proto/http/vpid/bbc_world_service.pls")
 ]
@@ -149,7 +153,7 @@ def handle_tune(delta):
 def play():
   logging.debug("Set stream to: {}".format(STREAMS[currentStream][1]))
   d.scrollText(STREAMS[currentStream][0])
-  d.priorityText("R{}".format(currentStream+1))
+  d.priorityText("{}".format(currentStream+1))
   p.destroy_pipeline()
   if p.create_pipeline(STREAMS[currentStream][1], True) is True:
     d.start()
