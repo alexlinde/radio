@@ -1,3 +1,7 @@
+
+# full credit to Andrew Dupont https://github.com/savetheclocktower) for this:
+# https://gist.github.com/savetheclocktower/9b5f67c20f6c04e65ed88f2e594d43c1
+
 import subprocess
 import logging
 
