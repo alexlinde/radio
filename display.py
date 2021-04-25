@@ -11,6 +11,7 @@ class Display:
       self._timer = None
       self._power = True
       self._scroll = ""
+      self._priority_active  = False
 
   def destroy(self):
     self.stop()
@@ -64,24 +65,28 @@ class Display:
     self._matrix.show()
 
   def _priority_done(self):
+    self._priority_active = False
     self._update()
 
   def priorityText(self, text, duration=2.0):
     if (self._timer):
-      self._timer.cancel()
+      self._timer.cancel()    
     s = str(text)
     x = (8 - self._font.measureText(s)) // 2
     self._matrix.fill(0)
     self._font.drawText(self._matrix,x,6,s)
     self._matrix.show()
+    self._priority_active = True
     
     self._timer = threading.Timer(duration,self._priority_done)
     self._timer.start() 
 
   def scrollText(self, text):
-    if (self._timer):
-      self._timer.cancel()
     self._scroll = str(text)
     self._xStart = self._width - 1
     self._currentCharacter = 0
-    self._update()
+    
+    if (self._priority_active is False)
+      if (self._timer):
+        self._timer.cancel()
+      self._update()

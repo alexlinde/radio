@@ -25,6 +25,7 @@ from volume import Volume
 from switches import RotaryEncoder, RotarySwitch
 from display import Display
 from player import Player
+from imda import IMDA
 
 from RPi import GPIO
 
@@ -54,20 +55,11 @@ VOLUME_MAX = 96
 # Power LED to show that radio service is running
 POWER_GPIO = 16
 
-# The streams we can tune between
-# MPEG-DASH for BBC, low (48-96k) bitrate can be used globally
-STREAMS = [
-  ("BBC Radio 1", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_radio_one.mpd"),
-  ("BBC Radio 2", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_radio_two.mpd"),
-  ("BBC Radio 3", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_radio_three.mpd"),
-  ("BBC Radio 4", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_radio_fourfm.mpd"),
-  ("BBC Radio 5 Live", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_radio_five_live.mpd"),
-  ("BBC 6 Music", "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk/dash_low/ak/bbc_6music.mpd"),
-  ("BBC World Service", "http://open.live.bbc.co.uk/mediaselector/5/select/mediaset/http-icy-mp3-a/format/pls/proto/http/vpid/bbc_world_service.pls")
-]
-
 # (END SETTINGS)
 # 
+
+# Load the stream urls from the BBC IMDA XML files
+STREAMS = IMDA().stations
 
 # Callbacks happens in a separate thread. If turn callbacks fire erratically 
 # or out of order, we'll use a queue to enforce FIFO. 
