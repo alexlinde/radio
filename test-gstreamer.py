@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
 import sys
-
+import time
 import gi
 gi.require_version('Gst', '1.0')
 from gi.repository import GObject, Gst, GLib
@@ -11,8 +11,26 @@ URI = "http://a.files.bbci.co.uk/media/live/manifesto/audio/simulcast/dash/nonuk
 
 is_live = True
 pipe = None
+shift = False
 
 Gst.init(None)
+
+# def timezone_shift():
+#     time.localtime()
+
+def query_time_seconds(pipeline):
+    rc, pos_int = pipeline.query_position(Gst.Format.TIME)
+    if rc:
+        s = pos_int / Gst.SECOND
+        print("Current position is {0} ({1})".format(s,time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(s))))
+        return s
+    print("  Failed to query position")
+    return None
+
+def seek_to_time_seconds(pipeline, seek_s):
+    print("Seeking to: {0} ({1})".format(seek_s,time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(seek_s))))
+    if pipeline.seek_simple(Gst.Format.TIME, Gst.SeekFlags.FLUSH, seek_s * Gst.SECOND) == False:
+        print("  Failed to seek")
 
 def decode_src_created(element, new_pad, data):
     print("Received new pad '{0}' from '{1}'".format(new_pad.get_name(), element.get_name()))
@@ -109,9 +127,13 @@ try:
             pipe.set_state(Gst.State.PAUSED)
             pipe.set_state(Gst.State.PLAYING)
         elif message.type == Gst.MessageType.STATE_CHANGED:            
-            if message.src.get_name() == 'pipeline':
-                old_state, new_state, pending_state = message.parse_state_changed()
-                print("Pipeline changed from {0} to {1}.".format(old_state.value_nick, new_state.value_nick))
+            old_state, new_state, pending_state = message.parse_state_changed()
+            print("{0} changed from {1} to {2}.".format(message.src.get_name(), old_state.value_nick, new_state.value_nick))
+            current_s = query_time_seconds(pipe)
+
+            if new_state == Gst.State.PLAYING and message.src == pipe and not shift:
+                seek_to_time_seconds(pipe,current_s - 8*3600)
+                shift = True
         elif message.type == Gst.MessageType.ERROR:
             err, msg = message.parse_error()
             print("Error: {0}: {1}".format(err, msg))

@@ -58,8 +58,8 @@ class Display:
         else:
           self._xStart = 0
 
-      # 60ms update frequency
-      self._timer = threading.Timer(200/1000.0,self._update)
+      # display update frequency
+      self._timer = threading.Timer(50/1000.0,self._update)
       self._timer.start() 
 
     self._matrix.show()
@@ -82,11 +82,11 @@ class Display:
     self._timer.start() 
 
   def scrollText(self, text):
-    self._scroll = str(text)
+    self._scroll = str(text) + '  '
     self._xStart = self._width - 1
     self._currentCharacter = 0
     
-    if (self._priority_active is False)
+    if (self._priority_active is False):
       if (self._timer):
         self._timer.cancel()
       self._update()
