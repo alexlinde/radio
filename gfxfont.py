@@ -21,7 +21,7 @@ class GFXFont:
         w = 0
         for c in s:
             glyph = self._glyphs[ord(c) - self._first]
-            w = w + glyph.xAdvance
+            w += glyph.xAdvance
         return w
 
     def drawText(self, matrix, x, y, s):
@@ -32,12 +32,12 @@ class GFXFont:
         bit = 0
         glyph = self._glyphs[ord(c) - self._first]
         offset = glyph.bitmapLocation
-        for yy in range(0, glyph.height):
-            for xx in range(0, glyph.width):
+        for yy in range(glyph.height):
+            for xx in range(glyph.width):
                 if (bit & 7 == 0):
                     bits = self._bitmap[offset]
                     offset = offset + 1
-                bit = bit + 1
+                bit += 1
                 if (bits & 0x80):
                     matrix.pixel(x+glyph.xOffset+xx, y+glyph.yOffset+yy, True)
                 bits = bits << 1

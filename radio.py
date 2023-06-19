@@ -25,7 +25,8 @@ from volume import Volume
 from switches import RotaryEncoder, RotarySwitch
 from display import Display
 from player import Player
-from imda import IMDA
+# from imda import IMDA
+from streams import Streams
 
 from RPi import GPIO
 
@@ -59,7 +60,8 @@ POWER_GPIO = 16
 # 
 
 # Load the stream urls from the BBC IMDA XML files
-STREAMS = IMDA().stations
+# STREAMS = IMDA().stations
+STREAMS = Streams().STREAMS
 
 # Callbacks happens in a separate thread. If turn callbacks fire erratically 
 # or out of order, we'll use a queue to enforce FIFO. 
@@ -127,10 +129,7 @@ def handle_volume(delta):
   if v.is_muted:
     logging.debug("Unmuting")
     v.toggle()
-  if delta == 1:
-    vol = v.up()
-  else:
-    vol = v.down()
+  vol = v.up() if delta == 1 else v.down()
   d.priorityText(int(v.scaled_volume(vol)))
   logging.debug("Set volume to: {}".format(vol))
 

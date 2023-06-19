@@ -24,7 +24,7 @@ class RotarySwitch:
       GPIO.setup(channel, GPIO.IN, pull_up_down=GPIO.PUD_UP)
       GPIO.add_event_detect(channel, GPIO.BOTH, self._on_event)
       if (GPIO.input(channel) == 0): # active low
-        if (self._pole == None):
+        if self._pole is None:
           # Store the currently active pole index
           self._pole = self._gpio.index(channel)
         else:
